@@ -1,0 +1,89 @@
+# 서버를 실행하고 1~8번 순서로 실행하세요.
+# 생성 응답에서 받은 ID를 자동으로 저장합니다.
+@baseUrl = http://localhost:8080/api/v3/items
+
+### 1. 상품 단건 생성 (201 + Location)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "노트북",
+  "price": 1000000
+}
+
+> {%
+    client.test("단건 생성 성공", function () {
+        client.assert(response.status === 201, "201 응답이어야 합니다.");
+    });
+    client.global.set("singleItemId", response.body.id);
+%}
+
+### 2. 전체 상품 조회 (200)
+GET {{baseUrl}}
+
+### 3. 생성한 상품 단건 조회 (200)
+GET {{baseUrl}}/{{singleItemId}}
+~
+### 4. 상품 일괄 생성 (201)
+POST {{baseUrl}}/bulk
+Content-Type: application/json
+
+[
+  {"name": "마우스", "price": 30000},
+  {"name": "키보드", "price": 50000}
+]
+
+> {%
+    client.test("일괄 생성 성공", function () {
+        client.assert(response.status === 201, "201 응답이어야 합니다.");
+        client.assert(response.body.length === 2, "상품 2개가 생성되어야 합니다.");
+    });
+    client.global.set("bulkItemId1", response.body[0].id);
+    client.global.set("bulkItemId2", response.body[1].id);
+%}
+
+### 5. 상품 단건 수정 (200)
+PUT {{baseUrl}}/{{singleItemId}}
+Content-Type: application/json
+
+{
+  "name": "게이밍 노트북",
+  "price": 1500000
+}
+
+### 6. 상품 가격 일괄 수정 (200)
+PUT {{baseUrl}}/bulk/prices
+Content-Type: application/json
+
+[
+  {"id": {{bulkItemId1}}, "price": 25000},
+  {"id": {{bulkItemId2}}, "price": 45000}
+]
+
+### 7. 상품 단건 삭제 (204)
+DELETE {{baseUrl}}/{{singleItemId}}
+
+### 8. 상품 일괄 삭제 (204)
+DELETE {{baseUrl}}/bulk?ids={{bulkItemId1}},{{bulkItemId2}}
+### 9. 입력 오류 (400)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{"name": "", "price": -1}
+
+### 10. 존재하지 않는 상품 (404)
+GET {{baseUrl}}/9223372036854775807
+
+### 11. 내부 오류 시연 (500)
+GET {{baseUrl}}
+X-Demo-Error: 500
+
+### 12. 서비스 일시 이용 불가 시연 (503)
+GET {{baseUrl}}
+X-Demo-Error: 503
+
+### 13. 잘못된 JSON (400)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{"name":
